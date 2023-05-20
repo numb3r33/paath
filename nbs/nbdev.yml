@@ -1,0 +1,9 @@
+project:
+  output-dir: _docs
+
+website:
+  title: "paath.ai"
+  site-url: "https://numb3r33.github.io/paath.ai"
+  description: "NLP library"
+  repo-branch: main
+  repo-url: "https://github.com/numb3r33/paath.ai"
