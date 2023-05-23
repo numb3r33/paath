@@ -5,4 +5,4 @@ d = { 'settings': { 'branch': 'main',
                 'doc_host': 'https://numb3r33.github.io',
                 'git_url': 'https://github.com/numb3r33/paathai',
                 'lib_path': 'paathai'},
-  'syms': {'paathai.core': {}}}
+  'syms': {'paathai.core': {}, 'paathai.data': {}}}
