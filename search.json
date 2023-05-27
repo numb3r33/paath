@@ -1,0 +1,72 @@
+[
+  {
+    "objectID": "data.html",
+    "href": "data.html",
+    "title": "data",
+    "section": "",
+    "text": "DATA_PATH  = Path('data').parent / 'drive' / 'MyDrive' / 'paathai' / 'data'\nTRAIN_PCT  = 0.9\n\ndef load_data():\n  with open(DATA_PATH / 'input.txt', 'r') as f:\n      data = f.read()\n\n  return data\ndef load_sample_data():\n  return \"Natural Language Processing and Machine Learning is very interesting.\""
+  },
+  {
+    "objectID": "data.html#numericalize",
+    "href": "data.html#numericalize",
+    "title": "data",
+    "section": "Numericalize",
+    "text": "Numericalize\n\nShould we strip extra whitespace from the text?\nShould we make every character small case?\nWhat should be the special padding char used to make sure equal batches are generated from the corpus?\nWhat should be the index assigned to the special char?\nHow to create one_hot_vector of each individual char encoding using only numpy?\n\nNotes:\n\nFirst we convert string 2 index\nThen we convert index 2 one hot encoded vectors\n\n\ndef get_data(sample=False):\n  if sample: data = load_sample_data()\n  else: data = load_data()\n\n  return data\n\ndef split_train_valid(data):\n  n = len(data)\n  \n  return data[:int(n*TRAIN_PCT)], data[int(n*TRAIN_PCT):]\n\ndef get_lowercase_data(sample=False):\n  data = get_data(sample=sample)\n  return data.lower()\n\n\ndata = get_data()\ntrain_data, valid_data = split_train_valid(data)\n\n\nSPECIAL_CHAR = '`'\ndef make_vocab(c, min_freq=3):\n  vocab = [o for o, v in c.most_common() if v &gt;= min_freq]\n  return  [SPECIAL_CHAR] + vocab\n\n\nfrom collections import Counter\n\nc = Counter(data)\n\ndef w2i(vocab): return {w:i for i,w in enumerate(vocab)}\ndef i2w(vocab): return {i:w for i,w in enumerate(vocab)}\n\n\nc\n\n\nvocab = make_vocab(c)\nwi = w2i(vocab)\niw = i2w(vocab)\n\n\nidx = sorted(wi.values())\neye = np.eye(max(idx) + 1)\n\naa = eye[idx]\naa.shape\n\n(65, 65)\n\n\n\nwi\n\n{'`': 0,\n ' ': 1,\n 'e': 2,\n 't': 3,\n 'o': 4,\n 'a': 5,\n 'h': 6,\n 's': 7,\n 'r': 8,\n 'n': 9,\n 'i': 10,\n '\\n': 11,\n 'l': 12,\n 'd': 13,\n 'u': 14,\n 'm': 15,\n 'y': 16,\n ',': 17,\n 'w': 18,\n 'f': 19,\n 'c': 20,\n 'g': 21,\n 'I': 22,\n 'b': 23,\n 'p': 24,\n ':': 25,\n '.': 26,\n 'A': 27,\n 'v': 28,\n 'k': 29,\n 'T': 30,\n \"'\": 31,\n 'E': 32,\n 'O': 33,\n 'N': 34,\n 'R': 35,\n 'S': 36,\n 'L': 37,\n 'C': 38,\n ';': 39,\n 'W': 40,\n 'U': 41,\n 'H': 42,\n 'M': 43,\n 'B': 44,\n '?': 45,\n 'G': 46,\n '!': 47,\n 'D': 48,\n '-': 49,\n 'F': 50,\n 'Y': 51,\n 'P': 52,\n 'K': 53,\n 'V': 54,\n 'j': 55,\n 'q': 56,\n 'x': 57,\n 'z': 58,\n 'J': 59,\n 'Q': 60,\n 'Z': 61,\n 'X': 62,\n '3': 63,\n '&': 64}\n\n\n\ncwi = [wi[o_] for o_ in data if o_ in wi]\ncwi[:10]\n\n[50, 10, 8, 7, 3, 1, 38, 10, 3, 10]\n\n\n\n''.join([iw[o_] for o_ in cwi[:10]])\n\n'First Citi'\n\n\n\nclass Dataset():\n  def __init__(self, x, vocab, cw): \n    self.x = x\n    self.vocab = vocab\n    self.cw = cw \n\n    self._setup()\n    self._numericalize()\n    self._create_items()\n\n  def _setup(self):\n    self.w2i = {w:i for i,w in enumerate(self.vocab)}\n    self.i2w = {i:w for i,w in enumerate(self.vocab)}\n\n  def _numericalize(self):\n    x = SPECIAL_CHAR*self.cw+self.x+SPECIAL_CHAR*self.cw\n    self.nt = [self.w2i[o_] for o_ in x if o_ in self.w2i]\n\n  def _create_items(self):\n    \n    self.contexts = []\n    self.targets  = []\n\n    for i in range(0+self.cw, len(self.nt)-self.cw):\n      lw = self.nt[max(0, i-self.cw):i]\n      rw = self.nt[i+1:min(i+self.cw+1, len(self.nt))]\n      context = lw + rw\n      target  = self.nt[i]\n\n      self.contexts.append(context)\n      self.targets.append(target)\n\n  def __len__(self): return len(self.contexts)\n  def __getitem__(self, i): return tensor(self.contexts[i]), tensor(self.targets[i], dtype=torch.long)\n\n\nc     = Counter(data)\nvocab = make_vocab(c)\n\ndset = Dataset(data, vocab, cw=2)\ndset[:2]\n\n(tensor([[ 0,  0, 10,  8],\n         [ 0, 50,  8,  7]]),\n tensor([50, 10]))\n\n\n\ntrain_ds, valid_ds = Dataset(train_data, vocab, cw=2), Dataset(valid_data, vocab, cw=2)\n\n\nxb, yb = train_ds[0:5]\nassert len(xb)==5\n\nxb\n\ntensor([[ 0,  0, 10,  8],\n        [ 0, 50,  8,  7],\n        [50, 10,  7,  3],\n        [10,  8,  3,  1],\n        [ 8,  7,  1, 38]])"
+  },
+  {
+    "objectID": "data.html#dataloader",
+    "href": "data.html#dataloader",
+    "title": "data",
+    "section": "Dataloader",
+    "text": "Dataloader\n\nBatch Size:\n\n\nclass DataLoader():\n  def __init__(self, ds, bs): self.ds,self.bs = ds,bs\n  def __iter__(self):\n    for i in range(0, len(self.ds), self.bs):\n      yield self.ds[i:i+self.bs]\n\n\nbs       = 64\ntrain_dl = DataLoader(train_ds, bs=bs)\nvalid_dl = DataLoader(valid_ds, bs=bs)\n\n\nxb, yb = next(iter(train_dl))\nlen(xb)\n\n64"
+  },
+  {
+    "objectID": "data.html#model",
+    "href": "data.html#model",
+    "title": "data",
+    "section": "Model",
+    "text": "Model\n\nclass CBOW(Module):\n  def __init__(self, vocab_size, embed_size):\n    self.embed_size = embed_size\n\n    self.embed  = nn.Embedding(num_embeddings=vocab_size, embedding_dim=self.embed_size)\n    self.linear = nn.Linear(self.embed_size, vocab_size)\n    self.layers = [self.embed, self.linear]\n\n  def forward(self, x):\n    out    = torch.sum(self.embed(x), dim=1)\n    logits = self.linear(out)\n    return logits\n\n\nmodel = CBOW(vocab_size=len(vocab), embed_size=2)\nret   = model(xb)\n\nret.shape\n\ntorch.Size([64, 65])"
+  },
+  {
+    "objectID": "data.html#training-loop",
+    "href": "data.html#training-loop",
+    "title": "data",
+    "section": "Training Loop",
+    "text": "Training Loop\n\nloss_func = F.cross_entropy\n\n\nxb, yb = next(iter(train_dl))\npreds  = model(xb)\npreds[0], preds.shape\n\n(tensor([ 2.1967,  1.7395,  1.7965, -3.3907,  3.4688,  0.0461, -0.4433,  0.1141,\n         -3.1695,  0.1360], grad_fn=&lt;SelectBackward0&gt;),\n torch.Size([2, 10]))\n\n\n\nloss_func(preds, yb)\n\ntensor(5.1907, grad_fn=&lt;NllLossBackward0&gt;)\n\n\n\nlr     = 0.05\nepochs = 6\n\n\n-torch.tensor(1/65).log()\n\ntensor(4.1744)\n\n\n\ndef accuracy(out, yb): return (torch.argmax(out, dim=1)==yb).float().mean()\n\n\nfor epoch in range(epochs):\n  for i, (xb, yb) in enumerate(train_dl):\n    preds = model(xb)\n    loss  = loss_func(preds, yb)\n    loss.backward()\n\n    if i==0: print(loss.item())\n\n    with torch.no_grad():\n      for l in model.layers:\n        if hasattr(l, 'weight'):\n          l.weight -= l.weight.grad * lr\n          l.weight.grad.zero_()\n          \n          if hasattr(l, 'bias'):\n            l.bias   -= l.bias.grad * lr\n            l.bias.grad.zero_()\n\n5.020415306091309\n3.262455701828003\n3.1930222511291504\n3.163545608520508\n3.1491901874542236\n3.139727830886841\n\n\n\nT = model.embed.weight.detach().cpu().numpy()\nT.shape\n\n(65, 2)\n\n\n\ndef plot_embeddings(T, vocab):\n  plt.figure(figsize=(14, 8))\n  plt.scatter(T[ :, 0], T[:, 1], c='orange', edgecolors='r')\n  for label, x, y in zip(vocab, T[:, 0], T[:, 1]):\n    plt.annotate(label, xy=(x, y), xytext=(0, 0), textcoords='offset points')\n\n\nExperiment: Lowercase data to reduce the vocabulary size\n\ndata = get_lowercase_data()\ntrain_data, valid_data = split_train_valid(data)\nlen(train_data), len(valid_data)\n\n\nfrom collections import Counter\n\nc = Counter(data)\nSPECIAL_CHAR = '`'\n\ndef make_vocab(c, min_freq=3):\n  vocab = [o for o, v in c.most_common() if v &gt;= min_freq]\n  return  [SPECIAL_CHAR] + vocab\n\ndef w2i(vocab): return {w:i for i,w in enumerate(vocab)}\ndef i2w(vocab): return {i:w for i,w in enumerate(vocab)}\n\n\nc     = Counter(data)\nvocab = make_vocab(c)\ncw    = 2\n\ntrain_ds, valid_ds = Dataset(train_data, vocab, cw=cw), Dataset(valid_data, vocab, cw=cw)\n\n\nbs       = 64\ntrain_dl = DataLoader(train_ds, bs=bs)\nvalid_dl = DataLoader(valid_ds, bs=bs)\n\n\nembed_size = 2\nmodel      = CBOW(vocab_size=len(vocab), embed_size=embed_size)\n\n\nloss_func = F.cross_entropy\n\nlr     = 0.05\nepochs = 6\n\ndef accuracy(out, yb): return (torch.argmax(out, dim=1)==yb).float().mean()\n\nprint(-torch.tensor(1/len(vocab)).log())\n\ntensor(3.6636)\n\n\n\nfor epoch in range(epochs):\n  for i, (xb, yb) in enumerate(train_dl):\n    preds = model(xb)\n    loss  = loss_func(preds, yb)\n    loss.backward()\n\n    if i==0: print(loss.item(), f'accuracy: {accuracy(preds, yb)}')\n\n    with torch.no_grad():\n      for l in model.layers:\n        if hasattr(l, 'weight'):\n          l.weight -= l.weight.grad * lr\n          l.weight.grad.zero_()\n          \n          if hasattr(l, 'bias'):\n            l.bias   -= l.bias.grad * lr\n            l.bias.grad.zero_()\n\n3.9790732860565186 accuracy: 0.015625\n2.926412582397461 accuracy: 0.171875\n2.900470018386841 accuracy: 0.203125\n2.893688440322876 accuracy: 0.203125\n2.891512155532837 accuracy: 0.1875\n2.890486001968384 accuracy: 0.1875\n\n\n\nT = model.embed.weight.detach().cpu().numpy()\nT.shape\n\n(39, 2)\n\n\n\nplt.figure(figsize=(14, 8))\nplt.scatter(T[ :, 0], T[:, 1], c='orange', edgecolors='r')\nfor label, x, y in zip(vocab, T[:, 0], T[:, 1]):\n  plt.annotate(label, xy=(x, y), xytext=(0, 0), textcoords='offset points')"
+  },
+  {
+    "objectID": "data.html#random-sampling",
+    "href": "data.html#random-sampling",
+    "title": "data",
+    "section": "Random Sampling",
+    "text": "Random Sampling\nEvery time we go through the dataset we should do it in random order\n\ndata = get_lowercase_data(sample=False)\ntrain_data, valid_data = split_train_valid(data)\n\nc     = Counter(data)\nvocab = make_vocab(c)\ncw    = 2\n\ntrain_ds, valid_ds = Dataset(train_data, vocab, cw=cw), Dataset(valid_data, vocab, cw=cw)\n\n\nimport random\n\n\nclass Sampler():\n  def __init__(self, ds, shuffle=False): self.n, self.shuffle = len(ds), shuffle\n  def __iter__(self):\n    res = list(range(self.n))\n    if self.shuffle: random.shuffle(res)\n    return iter(res)\n\n\nfrom itertools import islice\n\n\nss = Sampler(train_ds)\n\n\nit = iter(ss)\nfor o in range(5): print(next(it))\n\n0\n1\n2\n3\n4\n\n\n\nss = Sampler(train_ds, shuffle=True)\nlist(islice(ss, 5))\n\n[584975, 222905, 285595, 46585, 226912]\n\n\n\nimport fastcore.all as fc\n\n\nclass BatchSampler():\n  def __init__(self, sampler, bs, drop_last=False):\n    fc.store_attr()\n\n  def __iter__(self): yield from fc.chunked(iter(self.sampler), self.bs, drop_last=self.drop_last)\n\n\nbatches = BatchSampler(ss, 4)\nlist(islice(batches, 5))\n\n[[586337, 871216, 388669, 475731],\n [404592, 38204, 299201, 538169],\n [955798, 526126, 792506, 705877],\n [156484, 695016, 642301, 69967],\n [819679, 193196, 985299, 97064]]\n\n\n\ndef collate(b):\n  xs, ys = zip(*b)\n  return torch.stack(xs), torch.stack(ys)\n\n\nclass DataLoader():\n  def __init__(self, ds, batches, collate_fn=collate): fc.store_attr()\n  def __iter__(self): yield from (self.collate_fn(self.ds[i] for i in b) for b in self.batches)\n\n\nbs = 64\ntrain_samp = BatchSampler(Sampler(train_ds, shuffle=True), bs)\nvalid_samp = BatchSampler(Sampler(valid_ds, shuffle=False), bs)\n\n\ntrain_dl = DataLoader(train_ds, batches=train_samp, collate_fn=collate)\nvalid_dl = DataLoader(valid_ds, batches=valid_samp, collate_fn=collate)\n\n\nxb, yb = next(iter(valid_dl))\nxb[:3]\n\ntensor([[ 0,  0, 11, 11],\n        [ 0, 30, 11, 21],\n        [30, 11, 21,  9]])\n\n\n\nembed_size = 2\nmodel      = CBOW(vocab_size=len(vocab), embed_size=embed_size)\n\n\nloss_func = F.cross_entropy\n\nlr     = 0.05\nepochs = 6\n\ndef accuracy(out, yb): return (torch.argmax(out, dim=1)==yb).float().mean()\n\n\nfor epoch in range(epochs):\n  for i, (xb, yb) in enumerate(train_dl):\n    preds = model(xb)\n    loss  = loss_func(preds, yb)\n    loss.backward()\n\n    if i==0: print(loss.item(), f'accuracy: {accuracy(preds, yb)}')\n\n    with torch.no_grad():\n      for l in model.layers:\n        if hasattr(l, 'weight'):\n          l.weight -= l.weight.grad * lr\n          l.weight.grad.zero_()\n          \n          if hasattr(l, 'bias'):\n            l.bias   -= l.bias.grad * lr\n            l.bias.grad.zero_()\n\n4.0674147605896 accuracy: 0.0625\n2.560107469558716 accuracy: 0.265625\n2.829186201095581 accuracy: 0.203125\n2.4891812801361084 accuracy: 0.375\n2.7670912742614746 accuracy: 0.21875\n2.7291412353515625 accuracy: 0.1875\n\n\n\nT = model.embed.weight.detach().cpu().numpy()\nT.shape\n\n(39, 2)\n\n\n\nplot_embeddings(T, vocab)"
+  },
+  {
+    "objectID": "data.html#export",
+    "href": "data.html#export",
+    "title": "data",
+    "section": "Export",
+    "text": "Export"
+  },
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "paath.ai",
+    "section": "",
+    "text": "This file will become your README and also the index of your documentation."
+  },
+  {
+    "objectID": "index.html#install",
+    "href": "index.html#install",
+    "title": "paath.ai",
+    "section": "Install",
+    "text": "Install\npip install paathai"
+  },
+  {
+    "objectID": "index.html#how-to-use",
+    "href": "index.html#how-to-use",
+    "title": "paath.ai",
+    "section": "How to use",
+    "text": "How to use\nFill me in please! Don’t forget code examples:\n\n1+1\n\n2"
+  }
+]
